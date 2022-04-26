@@ -1,24 +1,46 @@
-import base64
+from typing import KeysView
 from Crypto import Random
-from Crypto import PublicKey
 from Crypto.PublicKey import RSA
+import os
 
-def toBase64(string):
-    return base64.b64encode(string)
+path_private = "private"
+path_public = "public"
+if not os.path.exists(path_private):
+    os.makedirs(path_private)
+if not os.path.exists(path_public):
+    os.makedirs(path_public)
 
-def generate_keys():
-    """
-    This func returns pair of 
-    Private and Public keys
-    """
-    modulus_length = 256*4
-    private_key = RSA.generate(modulus_length, Random.new().read)
-    public_key = private_key.publickey()
-    return private_key, public_key
+key_len = 2048
 
-pri, pub = generate_keys()
-print(pri,pub)
-private_key = pri.exportKey()
-public_key = pub.exportKey()
+key = RSA.generate(key_len)
+f = open('private/mykey.pem','wb')
+f.write(key.exportKey('PEM'))
+f.close()
 
-print(private_key.decode(),"\n\n\n", public_key.decode())
+f = open('public/mykey_public.pem', 'wb')
+f.write(key.publickey().exportKey('PEM'))
+f.close()
+
+f = open('private/mykey.pem','rb')
+key1 = RSA.import_key(f.read())
+f.close()
+print(key1.exportKey().decode())
+
+f = open('public/mykey_public.pem','rb')
+key2 = RSA.import_key(f.read())
+f.close()
+print(key2.exportKey().decode())
+
+
+"""
+key manager:
+
+1. generowanie kluczy jesli nie istnieja
+1.1 zabezpieczenie ich haslem
+1.2 haslo to hash (SHA) z hasla "user friendly" wpisanego przez uzytkownika
+2. odszyfrowanie kluczy za pomoca hashu hasla
+
+
+
+
+"""
