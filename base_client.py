@@ -2,7 +2,8 @@
 
 import threading
 import socket
-
+import os
+path_private = "private"
 
 #STATIC
 SIZE_OF_HEADER = 64
@@ -53,11 +54,38 @@ layout = [[sg.Text('', key="chat")],
         [sg.InputText()],
           [sg.Button('Ok'), sg.Button('Cancel')]]
 
+layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
+[sg.Text('Enter again:'), sg.InputText()],
+[sg.Text('', key='messagePassword')],
+          [sg.Button('Ok')]]
+
+layout_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
+          [sg.Button('Ok'), sg.Button('Cancel')]]
+
 window = sg.Window('Client #1', layout)
 # --- main ---
 
 def base_client_start():
-    global connected 
+    global connected
+    global window
+
+    if not os.path.exists(path_private):
+        print("first time opening the app - lets create a password")
+        window_password_creation = sg.Window('Client#1', layout_first_time_pass)
+        while True:
+            event, values = window_password_creation.read()
+            if event == sg.WIN_CLOSED or event == 'Cancel':
+
+                print("Closing the password creator window...")
+                break
+            if event == 'Ok':
+                print("entered passw ", values[0], values[1])
+                if(values[0] == values[1]):
+                    window_password_creation.close()
+                    break
+                else:
+                    window_password_creation['messagePassword'].update('\n passwords dont match')
+
     print("Starting the base client...")
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #SOCK_STREAM because the order of the data that is sent is important 
@@ -71,6 +99,7 @@ def base_client_start():
     connection_thread = threading.Thread(target=client_connection, args=(connection,"client", window))
     connection_thread.start()
     #while recieving thread is up lets send messages
+
     while True:
         #message = input()
         chat = window['chat']
