@@ -1,3 +1,5 @@
+#--- back ----
+
 import threading
 import socket
 
@@ -35,6 +37,18 @@ def recieve_message(connection, address):
             print(f"[{address}] {message}")
         
     connection.close()
+
+#--- front ---
+import PySimpleGUI as sg
+sg.theme('DarkAmber')
+
+layout = [[sg.Text('', key="chat")],
+        [sg.InputText()],
+          [sg.Button('Ok'), sg.Button('Cancel')]]
+
+window = sg.Window('Client #2', layout)
+
+#--- front ---
 
 def client_start():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #SOCK_STREAM because the order of the data that is sent is important 
