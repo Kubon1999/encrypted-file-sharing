@@ -48,11 +48,14 @@ sg.theme('DarkAmber')
 
 layout = [[sg.Text('', key="chat")],
         [sg.InputText()],
-          [sg.Button('Ok'), sg.Button('Cancel')]]
+          [sg.Button('Ok')]]
 
 layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
 [sg.Text('Enter again:'), sg.InputText()],
 [sg.Text('', key='messagePassword')],
+          [sg.Button('Ok')]]
+
+layout_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
           [sg.Button('Ok')]]
 
 window = sg.Window('Client #2', layout)
@@ -73,7 +76,27 @@ def client_start():
                     break
                 else:
                     window_password_creation['messagePassword'].update('\n passwords dont match')
-
+    else:
+        print(">1 time opening the app - type in password")   
+        window_pass = sg.Window('Client#2', layout_pass)
+        while True:
+            event, values = window_pass.read()
+            if event == sg.WIN_CLOSED or event == 'Cancel':
+                print("Closing the password creator window...")
+                break
+            if event == 'Ok':
+                print("entered passw ", values[0])
+                window_pass.close()
+                break
+                #jezeli haslo dobre odszyfruj 
+                #jezeli nie to pisz bzdury
+                # if(values[0] == values[1]):
+                #     pass_right = True
+                #     window_pass.close()
+                #     break
+                # else:
+                #     window_pass.close()
+                #     break
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #SOCK_STREAM because the order of the data that is sent is important 
     print("Client started...")
     print("Trying to connect...")

@@ -13,6 +13,7 @@ ADDRESS = (IP, PORT)
 FORMAT_OF_MESSAGE_IN_SOCKET = "utf-8" 
 CLIENT_DISCONNECT_MESSAGE = "/exit"
 connected = False
+pass_right = False
 
 def client_connection(connection, address, window):
     global connected
@@ -52,7 +53,7 @@ sg.theme('DarkAmber')
 
 layout = [[sg.Text('', key="chat")],
         [sg.InputText()],
-          [sg.Button('Ok'), sg.Button('Cancel')]]
+          [sg.Button('Ok')]]
 
 layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
 [sg.Text('Enter again:'), sg.InputText()],
@@ -60,7 +61,7 @@ layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
           [sg.Button('Ok')]]
 
 layout_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
-          [sg.Button('Ok'), sg.Button('Cancel')]]
+          [sg.Button('Ok')]]
 
 window = sg.Window('Client #1', layout)
 # --- main ---
@@ -68,6 +69,7 @@ window = sg.Window('Client #1', layout)
 def base_client_start():
     global connected
     global window
+    global pass_right
 
     if not os.path.exists(path_private):
         print("first time opening the app - lets create a password")
@@ -75,16 +77,42 @@ def base_client_start():
         while True:
             event, values = window_password_creation.read()
             if event == sg.WIN_CLOSED or event == 'Cancel':
-
                 print("Closing the password creator window...")
                 break
             if event == 'Ok':
                 print("entered passw ", values[0], values[1])
                 if(values[0] == values[1]):
+                    #writing private key to file
+                    os.makedirs(path_private)
+                   # f = open('private/mykey.pem','wb')
+                   # f.write(values[0])
+                   # f.close()
                     window_password_creation.close()
                     break
                 else:
                     window_password_creation['messagePassword'].update('\n passwords dont match')
+    else:
+        print(">1 time opening the app - type in password")   
+        window_pass = sg.Window('Client#1', layout_pass)
+        while True:
+            event, values = window_pass.read()
+            if event == sg.WIN_CLOSED or event == 'Cancel':
+                print("Closing the password creator window...")
+                break
+            if event == 'Ok':
+                print("entered passw ", values[0])
+                window_pass.close()
+                break
+                #jezeli haslo dobre odszyfruj 
+                #jezeli nie to pisz bzdury
+                # if(values[0] == values[1]):
+                #     pass_right = True
+                #     window_pass.close()
+                #     break
+                # else:
+                #     window_pass.close()
+                #     break
+
 
     print("Starting the base client...")
 
