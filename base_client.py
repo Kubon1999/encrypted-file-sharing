@@ -1,7 +1,9 @@
 #--- back ---
 
+from optparse import Values
 import threading
 import socket
+import os
 import os
 path_private = "private"
 
@@ -15,6 +17,11 @@ CLIENT_DISCONNECT_MESSAGE = "/exit"
 connected = False
 pass_right = False
 
+
+
+#this is a separate thread  
+#it runs when a connection is established with second client
+#then recieves messages and updates the chat text in ui
 def client_connection(connection, address, window):
     global connected
     print(f"{address} connection established")
@@ -34,6 +41,7 @@ def client_connection(connection, address, window):
         
     connection.close()
 
+#taking a string and turn it into a message that we can send
 def send(client,message):
     message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
     length_of_message = len(message) #check this one why do we store the length in string then int
@@ -46,14 +54,27 @@ def send(client,message):
 
     #print(f"Send!")
 
+def send_file(client, message):
+    message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    length_of_message = len(message) #check this one why do we store the length in string then int
+    length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    length_of_message += b' ' * (SIZE_OF_HEADER - len(length_of_message))#lets add the few bytes to make the size of header = 64, so if the 'length_of_message' is 24  we need to add 64-24=40bytes
+    #this is because we make server read EXACTLY 64 bytes so now we must send EXACTLY 64 bytes
+    client.send(length_of_message)
+    #print(f"Sending: {message}")
+    client.send(message)
 
 #--- front ---
 import PySimpleGUI as sg
 sg.theme('DarkAmber')
 
-layout = [[sg.Text('', key="chat")],
-        [sg.InputText()],
-          [sg.Button('Ok')]]
+layout = [[sg.Text('Chat:')],
+    [sg.Text('', key="chat")],
+        [sg.InputText(do_not_clear=False)],
+          [sg.Button('Ok')],
+          [sg.Text('Send file:')],
+          [sg.Text('File:', size=(8, 1)), sg.Input( key="file"), sg.FileBrowse('FileBrowse')],
+          [sg.Submit(), sg.Cancel()]]
 
 layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
 [sg.Text('Enter again:'), sg.InputText()],
@@ -92,7 +113,7 @@ def base_client_start():
                 else:
                     window_password_creation['messagePassword'].update('\n passwords dont match')
     else:
-        print(">1 time opening the app - type in password")   
+        print("pass aready set - type in password")   
         window_pass = sg.Window('Client#1', layout_pass)
         while True:
             event, values = window_pass.read()
@@ -122,6 +143,7 @@ def base_client_start():
 
     client.listen()
     print("Base client running...")
+    print("Waiting for the second client...")
     connection, address = client.accept()
     connected = True
     connection_thread = threading.Thread(target=client_connection, args=(connection,"client", window))
@@ -138,6 +160,7 @@ def base_client_start():
 
         #print('You entered ',values[0])
         chat.update(chat.get()+'\n client#1: ' + values[0])
+        print(os.path.splitext(values['FileBrowse']))
         send(connection, values[0])
     client.close()
     connected = False

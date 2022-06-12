@@ -10,8 +10,10 @@ SERVER_IP = "0.0.0.0"
 SERVER_PORT = 3000
 SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
 CLIENT_DISCONNECT_MESSAGE = "/exit"
+CLIENT_SENT_FILE_MESSAGE = "/file"
 FORMAT_OF_MESSAGE_IN_SOCKET = "utf-8"
 path_private = "private"
+recv_file_mode = False
 
 def send(client,message):
     message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
@@ -25,6 +27,7 @@ def send(client,message):
     #print(f"Send!")
 
 def recieve_message(connection, address, window):
+    global recv_file_mode
     print(f"{address} connection established")
     connected = True
 
@@ -32,9 +35,14 @@ def recieve_message(connection, address, window):
         message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
         if message_size:
             message_size = int(message_size)
-            message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+            if recv_file_mode:
+                message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+            else:
+                message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
             if message == CLIENT_DISCONNECT_MESSAGE:
                 connected = False
+            if message == NEXT_MESSAGE_IS_FILE:
+                recv_file_mode = True
 
             chat = window['chat']
             chat.update(chat.get()+'\n client#1: ' + message)
@@ -46,9 +54,13 @@ def recieve_message(connection, address, window):
 import PySimpleGUI as sg
 sg.theme('DarkAmber')
 
-layout = [[sg.Text('', key="chat")],
+layout = [[sg.Text('Chat:')],
+    [sg.Text('', key="chat")],
         [sg.InputText()],
-          [sg.Button('Ok')]]
+          [sg.Button('Ok')],
+          [sg.Text('Send file:')],
+          [sg.Text('File:', size=(8, 1)), sg.Input(), sg.FileBrowse()],
+          [sg.Submit()]]
 
 layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
 [sg.Text('Enter again:'), sg.InputText()],
@@ -77,7 +89,7 @@ def client_start():
                 else:
                     window_password_creation['messagePassword'].update('\n passwords dont match')
     else:
-        print(">1 time opening the app - type in password")   
+        print("pass already set - type in password")   
         window_pass = sg.Window('Client#2', layout_pass)
         while True:
             event, values = window_pass.read()
