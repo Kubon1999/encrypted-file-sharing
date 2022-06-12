@@ -9,7 +9,7 @@ path_private = "private"
 
 #STATIC
 SIZE_OF_HEADER = 64
-IP = "0.0.0.0"
+IP = socket.gethostbyname(socket.gethostname())
 PORT = 3000
 ADDRESS = (IP, PORT)
 FORMAT_OF_MESSAGE_IN_SOCKET = "utf-8" 

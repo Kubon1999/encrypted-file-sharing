@@ -6,7 +6,7 @@ import os
 
 #STATIC
 SIZE_OF_HEADER = 64
-SERVER_IP = "0.0.0.0"
+SERVER_IP = socket.gethostbyname(socket.gethostname())
 SERVER_PORT = 3000
 SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
 CLIENT_DISCONNECT_MESSAGE = "/exit"
