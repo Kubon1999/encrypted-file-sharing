@@ -7,6 +7,9 @@ import os
 import sys
 import tqdm
 import math
+
+import rsa
+import klucze as keys
 path_private = "private"
 
 #STATIC
@@ -16,9 +19,17 @@ PORT = 3000
 ADDRESS = (IP, PORT)
 FORMAT_OF_MESSAGE_IN_SOCKET = "utf-8" 
 CLIENT_DISCONNECT_MESSAGE = "/exit"
-DEV_ENV = True
+DEV_ENV = False
 connected = False
 pass_right = False
+
+key_len = 2048 #RSA key length
+path_private = "private_base_client"
+path_public = "public_base_client"
+file_private = "private.pem"
+file_public = "public.pem"
+private_path_to_file = os.path.join(path_private, file_private)
+public_path_to_file = os.path.join(path_public, file_public)
 
 #FILE UPLOAD RELATED
 SEPARATOR = "<SEPARATOR>"
@@ -204,7 +215,7 @@ def base_client_start():
     global window
     global pass_right
     if DEV_ENV == False:
-        if not os.path.exists(path_private):
+        if not(os.path.exists(private_path_to_file)) or not(os.path.exists(public_path_to_file )):
             print("first time opening the app - lets create a password")
             window_password_creation = sg.Window('Client#1', layout_first_time_pass)
             while True:
@@ -215,11 +226,18 @@ def base_client_start():
                 if event == 'Ok':
                     print("entered passw ", values[0], values[1])
                     if(values[0] == values[1]):
-                        #writing private key to file
-                        os.makedirs(path_private)
-                    # f = open('private/mykey.pem','wb')
-                    # f.write(values[0])
-                    # f.close()
+                        #create dirs
+                        if not(os.path.exists(path_private)) or not(os.path.exists(path_public)):
+                            os.makedirs(path_private)
+                            os.makedirs(path_public)
+                        #generate RSA keys
+                        (pub, priv) = rsa.newkeys(key_len)
+                        #hash of user password
+                        pass_hash = keys.getHash(values[1].encode('UTF-8'))
+                        #write keys to file
+                        keys.writeRSAKey(pass_hash, private_path_to_file, priv)
+                        keys.writeRSAKey(pass_hash, public_path_to_file, pub)
+
                         window_password_creation.close()
                         break
                     else:
@@ -234,6 +252,12 @@ def base_client_start():
                     break
                 if event == 'Ok':
                     print("entered passw ", values[0])
+                    pass_hash = keys.getHash(values[0].encode('UTF-8'))
+                    try:
+                        xd = keys.readRSAKey(pass_hash, private_path_to_file)
+                        pass_right = True
+                    except:
+                        pass_right = False
                     window_pass.close()
                     break
                     #jezeli haslo dobre odszyfruj 

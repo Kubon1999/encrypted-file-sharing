@@ -1,47 +1,29 @@
-from typing import KeysView
-from Crypto.PublicKey import RSA
-import os
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad
+from Crypto.Util.Padding import pad, unpad
 import hashlib
+from base64 import b64decode, b64encode
 
-#making dirs for keys if not exists
-path_private = "private"
-path_public = "public"
-if not os.path.exists(path_private):
-    os.makedirs(path_private)
-if not os.path.exists(path_public):
-    os.makedirs(path_public)
+def getHash(password):
+    return hashlib.sha256(password).digest()
 
-#length of RSA key
-key_len = 2048
+def encryptRSA(hashed_Pass, data):
+    cipher = AES.new(hashed_Pass, AES.MODE_CBC)
+    return b64encode(cipher.iv + cipher.encrypt(pad(data, AES.block_size)))
 
-#generating RSA key
-key = RSA.generate(key_len)
+def decryptRSA(hashed_Pass,data):
+    string = '=' * (-len(data) % 4)
+    if string:
+        data = data + string.encode()
+    raw = b64decode(data)
+    cipher = AES.new(hashed_Pass, AES.MODE_CBC, raw[:AES.block_size])
+    return unpad(cipher.decrypt(raw[AES.block_size:]), AES.block_size)
 
-#temp password for debug
-password = b'ultraStronglyStrongPassword1234556333---xdxd'
+def writeRSAKey(hashed_Pass, path, key):
+    f = open(path, 'wb')
+    f.write(encryptRSA(hashed_Pass, key.save_pkcs1('PEM')))
+    f.close()
 
-#making SHA hash of password
-p1 = hashlib.sha256(password).digest()
-
-#making a cipher from hash of password
-cipher = AES.new(p1,AES.MODE_CBC)
-
-#getting RSA keys
-encrypted_RSA_Priv = key.exportKey()
-encrypted_RSA_Pub = key.publickey().exportKey()
-
-#ENCRYPT
-encrypted_RSA_Priv = cipher.iv + cipher.encrypt(pad(encrypted_RSA_Priv,AES.block_size))
-encrypted_RSA_Pub = cipher.iv + cipher.encrypt(pad(encrypted_RSA_Pub,AES.block_size))
-
-#writing private key to file
-f = open('private/mykey.pem','wb')
-f.write(encrypted_RSA_Priv)
-f.close()
-
-#writing public key to file
-f = open('public/mykey_public.pem', 'wb')
-f.write(encrypted_RSA_Pub)
-f.close()
+def readRSAKey(hashed_Pass, path):
+    f = open(path, 'rb')
+    key = f.read()
+    return decryptRSA(hashed_Pass, key)
