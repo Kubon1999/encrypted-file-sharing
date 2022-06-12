@@ -4,7 +4,8 @@ from optparse import Values
 import threading
 import socket
 import os
-import os
+import sys
+import tqdm
 path_private = "private"
 
 #STATIC
@@ -21,6 +22,7 @@ pass_right = False
 #FILE UPLOAD RELATED
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 4096 # send 4096 bytes each time step
+CLIENT_SENT_FILE_MESSAGE = "/file"
 
 #-----
 
@@ -61,8 +63,19 @@ def send(client,message):
 
     #print(f"Send!")
 
-def send_file(client, message, file):
+def send_file(client, file):
+    # get the file size
+    filesize = os.path.getsize(file)
+    filename = os.path.basename(file)
+    #send a information to the client that we will soon send you a file
+    send(client, "/file")
 
+    # start sending the file
+    print("sending a file...")
+    # send the filename and filesize
+    #the message we want to send
+    message = f"{filename}{SEPARATOR}{filesize}"
+    
     message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
     length_of_message = len(message) #check this one why do we store the length in string then int
     length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
@@ -71,6 +84,29 @@ def send_file(client, message, file):
     client.send(length_of_message)
     #print(f"Sending: {message}")
     client.send(message)
+
+
+    # --- send file in chunks function ---
+    
+    progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+    with open(file, "rb") as f:
+        while True:
+            # read the bytes from the file
+            bytes_read = f.read(BUFFER_SIZE)
+            if not bytes_read:
+                # file transmitting is done
+                print("file send done!")
+                f.close()
+                break
+            client.send(bytes_read)
+            # we use sendall to assure transimission in 
+            # busy networks
+            # update the progress bar
+            #print("part of file send! continue...")
+            progress.update(len(bytes_read))
+    # close the socket
+   # client.close()
+    # --- end ---
 
 #--- front ---
 import PySimpleGUI as sg
@@ -166,7 +202,7 @@ def base_client_start():
             print("Closing...")
             break
         if event == 'Send file':
-            send_file(connection, os.path.splitext(values['FileBrowse'][0]))
+            send_file(connection, values['FileBrowse'])
 
         #print('You entered ',values[0])
         chat.update(chat.get()+'\n client#1: ' + values[0])
@@ -175,5 +211,7 @@ def base_client_start():
     connected = False
     print("Connection closed.")
 
+
 base_client_start()
 window.close()
+os._exit(0)
