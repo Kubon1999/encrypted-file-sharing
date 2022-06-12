@@ -14,8 +14,15 @@ PORT = 3000
 ADDRESS = (IP, PORT)
 FORMAT_OF_MESSAGE_IN_SOCKET = "utf-8" 
 CLIENT_DISCONNECT_MESSAGE = "/exit"
+DEV_ENV = True
 connected = False
 pass_right = False
+
+#FILE UPLOAD RELATED
+SEPARATOR = "<SEPARATOR>"
+BUFFER_SIZE = 4096 # send 4096 bytes each time step
+
+#-----
 
 
 
@@ -54,7 +61,8 @@ def send(client,message):
 
     #print(f"Send!")
 
-def send_file(client, message):
+def send_file(client, message, file):
+
     message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
     length_of_message = len(message) #check this one why do we store the length in string then int
     length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
@@ -74,7 +82,7 @@ layout = [[sg.Text('Chat:')],
           [sg.Button('Ok')],
           [sg.Text('Send file:')],
           [sg.Text('File:', size=(8, 1)), sg.Input( key="file"), sg.FileBrowse('FileBrowse')],
-          [sg.Submit(), sg.Cancel()]]
+          [sg.Button('Send file'), sg.Cancel()]]
 
 layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
 [sg.Text('Enter again:'), sg.InputText()],
@@ -91,48 +99,48 @@ def base_client_start():
     global connected
     global window
     global pass_right
-
-    if not os.path.exists(path_private):
-        print("first time opening the app - lets create a password")
-        window_password_creation = sg.Window('Client#1', layout_first_time_pass)
-        while True:
-            event, values = window_password_creation.read()
-            if event == sg.WIN_CLOSED or event == 'Cancel':
-                print("Closing the password creator window...")
-                break
-            if event == 'Ok':
-                print("entered passw ", values[0], values[1])
-                if(values[0] == values[1]):
-                    #writing private key to file
-                    os.makedirs(path_private)
-                   # f = open('private/mykey.pem','wb')
-                   # f.write(values[0])
-                   # f.close()
-                    window_password_creation.close()
+    if DEV_ENV == False:
+        if not os.path.exists(path_private):
+            print("first time opening the app - lets create a password")
+            window_password_creation = sg.Window('Client#1', layout_first_time_pass)
+            while True:
+                event, values = window_password_creation.read()
+                if event == sg.WIN_CLOSED or event == 'Cancel':
+                    print("Closing the password creator window...")
                     break
-                else:
-                    window_password_creation['messagePassword'].update('\n passwords dont match')
-    else:
-        print("pass aready set - type in password")   
-        window_pass = sg.Window('Client#1', layout_pass)
-        while True:
-            event, values = window_pass.read()
-            if event == sg.WIN_CLOSED or event == 'Cancel':
-                print("Closing the password creator window...")
-                break
-            if event == 'Ok':
-                print("entered passw ", values[0])
-                window_pass.close()
-                break
-                #jezeli haslo dobre odszyfruj 
-                #jezeli nie to pisz bzdury
-                # if(values[0] == values[1]):
-                #     pass_right = True
-                #     window_pass.close()
-                #     break
-                # else:
-                #     window_pass.close()
-                #     break
+                if event == 'Ok':
+                    print("entered passw ", values[0], values[1])
+                    if(values[0] == values[1]):
+                        #writing private key to file
+                        os.makedirs(path_private)
+                    # f = open('private/mykey.pem','wb')
+                    # f.write(values[0])
+                    # f.close()
+                        window_password_creation.close()
+                        break
+                    else:
+                        window_password_creation['messagePassword'].update('\n passwords dont match')
+        else:
+            print("pass aready set - type in password")   
+            window_pass = sg.Window('Client#1', layout_pass)
+            while True:
+                event, values = window_pass.read()
+                if event == sg.WIN_CLOSED or event == 'Cancel':
+                    print("Closing the password creator window...")
+                    break
+                if event == 'Ok':
+                    print("entered passw ", values[0])
+                    window_pass.close()
+                    break
+                    #jezeli haslo dobre odszyfruj 
+                    #jezeli nie to pisz bzdury
+                    # if(values[0] == values[1]):
+                    #     pass_right = True
+                    #     window_pass.close()
+                    #     break
+                    # else:
+                    #     window_pass.close()
+                    #     break
 
 
     print("Starting the base client...")
@@ -157,10 +165,11 @@ def base_client_start():
         if event == sg.WIN_CLOSED or event == 'Cancel':
             print("Closing...")
             break
+        if event == 'Send file':
+            send_file(connection, os.path.splitext(values['FileBrowse'][0]))
 
         #print('You entered ',values[0])
         chat.update(chat.get()+'\n client#1: ' + values[0])
-        print(os.path.splitext(values['FileBrowse']))
         send(connection, values[0])
     client.close()
     connected = False

@@ -14,6 +14,7 @@ CLIENT_SENT_FILE_MESSAGE = "/file"
 FORMAT_OF_MESSAGE_IN_SOCKET = "utf-8"
 path_private = "private"
 recv_file_mode = False
+DEV_ENV = True
 
 def send(client,message):
     message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
@@ -76,39 +77,40 @@ window = sg.Window('Client #2', layout)
 
 def client_start():
     global window
-    if not os.path.exists(path_private):
-        print("first time opening the app - lets create a password")
-        window_password_creation = sg.Window('Client#2', layout_first_time_pass)
-        while True:
-            event, values = window_password_creation.read()
-            if event == 'Ok':
-                print("entered passw ", values[0], values[1])
-                if(values[0] == values[1]):
-                    window_password_creation.close()
+    if DEV_ENV == False:
+        if not os.path.exists(path_private):
+            print("first time opening the app - lets create a password")
+            window_password_creation = sg.Window('Client#2', layout_first_time_pass)
+            while True:
+                event, values = window_password_creation.read()
+                if event == 'Ok':
+                    print("entered passw ", values[0], values[1])
+                    if(values[0] == values[1]):
+                        window_password_creation.close()
+                        break
+                    else:
+                        window_password_creation['messagePassword'].update('\n passwords dont match')
+        else:
+            print("pass already set - type in password")   
+            window_pass = sg.Window('Client#2', layout_pass)
+            while True:
+                event, values = window_pass.read()
+                if event == sg.WIN_CLOSED or event == 'Cancel':
+                    print("Closing the password creator window...")
                     break
-                else:
-                    window_password_creation['messagePassword'].update('\n passwords dont match')
-    else:
-        print("pass already set - type in password")   
-        window_pass = sg.Window('Client#2', layout_pass)
-        while True:
-            event, values = window_pass.read()
-            if event == sg.WIN_CLOSED or event == 'Cancel':
-                print("Closing the password creator window...")
-                break
-            if event == 'Ok':
-                print("entered passw ", values[0])
-                window_pass.close()
-                break
-                #jezeli haslo dobre odszyfruj 
-                #jezeli nie to pisz bzdury
-                # if(values[0] == values[1]):
-                #     pass_right = True
-                #     window_pass.close()
-                #     break
-                # else:
-                #     window_pass.close()
-                #     break
+                if event == 'Ok':
+                    print("entered passw ", values[0])
+                    window_pass.close()
+                    break
+                    #jezeli haslo dobre odszyfruj 
+                    #jezeli nie to pisz bzdury
+                    # if(values[0] == values[1]):
+                    #     pass_right = True
+                    #     window_pass.close()
+                    #     break
+                    # else:
+                    #     window_pass.close()
+                    #     break
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #SOCK_STREAM because the order of the data that is sent is important 
     print("Client started...")
     print("Trying to connect...")
