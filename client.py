@@ -37,6 +37,53 @@ def send(client,message):
     client.send(message)
     #print(f"Send!")
 
+def send_file(client, file):
+    # get the file size
+    filesize = os.path.getsize(file)
+    filename = os.path.basename(file)
+    #send a information to the client that we will soon send you a file
+    send(client, "/file")
+
+    # start sending the file
+    print("sending a file...")
+    # send the filename and filesize
+    #the message we want to send
+    message = f"{filename}{SEPARATOR}{filesize}"
+    
+    message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    length_of_message = len(message) #check this one why do we store the length in string then int
+    length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    length_of_message += b' ' * (SIZE_OF_HEADER - len(length_of_message))#lets add the few bytes to make the size of header = 64, so if the 'length_of_message' is 24  we need to add 64-24=40bytes
+    #this is because we make server read EXACTLY 64 bytes so now we must send EXACTLY 64 bytes
+    client.send(length_of_message)
+    #print(f"Sending: {message}")
+    client.send(message)
+
+
+    # --- send file in chunks function ---
+    
+    progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+    with open(file, "rb") as f:
+        while True:
+            # read the bytes from the file
+            bytes_read = f.read(BUFFER_SIZE)
+            if not bytes_read:
+                # file transmitting is done
+                print("file send done!")
+                downloading = False
+                recv_file_mode = False
+                f.close()
+                break
+            client.send(bytes_read)
+            # we use sendall to assure transimission in 
+            # busy networks
+            # update the progress bar
+            #print("part of file send! continue...")
+            progress.update(len(bytes_read))
+    # close the socket
+   # client.close()
+    # --- end ---
+
 def recieve_message(connection, address, window):
     global recv_file_mode
     global downloading
@@ -58,12 +105,13 @@ def recieve_message(connection, address, window):
                 if message == CLIENT_DISCONNECT_MESSAGE:
                     connected = False
                     print("disconnected")
-                if message == CLIENT_SENT_FILE_MESSAGE:
+                elif message == CLIENT_SENT_FILE_MESSAGE:
                     print("preparing to recieve a file from client...")
                     recv_file_mode = True
-
-                chat = window['chat']
-                chat.update(chat.get()+'\n client#1: ' + message)
+                else:
+                    #normal message
+                    chat = window['chat']
+                    chat.update(chat.get()+'\n client#1: ' + message)
     connection.close()
 
 
@@ -106,6 +154,7 @@ def recieve_a_file(connection):
                 # file transmitting is done
                 print("downloaded the whole file! done!")
                 downloading = False
+                recv_file_mode = False
                 f.close()
                 break
             i+=1
@@ -119,15 +168,15 @@ def recieve_a_file(connection):
 
 #--- front ---
 import PySimpleGUI as sg
-sg.theme('DarkAmber')
+sg.theme('DarkBlue14')
 
 layout = [[sg.Text('Chat:')],
     [sg.Text('', key="chat")],
-        [sg.InputText()],
+        [sg.InputText(do_not_clear=False)],
           [sg.Button('Ok')],
           [sg.Text('Send file:')],
-          [sg.Text('File:', size=(8, 1)), sg.Input(), sg.FileBrowse()],
-          [sg.Submit()]]
+          [sg.Text('File:', size=(8, 1)), sg.Input( key="file"), sg.FileBrowse('FileBrowse')],
+          [sg.Button('Send file'), sg.Cancel()]]
 
 layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
 [sg.Text('Enter again:'), sg.InputText()],
@@ -195,8 +244,11 @@ def client_start():
         if event == sg.WIN_CLOSED or event == 'Cancel':
             print("Closing...")
             break
-        chat.update(chat.get()+'\n client#2: ' + values[0])
-        send(client, values[0])
+        if event == 'Send file':
+            send_file(client, values['FileBrowse'])
+        if(values[0]):
+            chat.update(chat.get()+'\n client#2: ' + values[0])
+            send(client, values[0])
 
 client_start()
 os._exit(0)

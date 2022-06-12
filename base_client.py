@@ -6,6 +6,7 @@ import socket
 import os
 import sys
 import tqdm
+import math
 path_private = "private"
 
 #STATIC
@@ -23,7 +24,8 @@ pass_right = False
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 4096 # send 4096 bytes each time step
 CLIENT_SENT_FILE_MESSAGE = "/file"
-
+downloading = False
+recv_file_mode = False
 #-----
 
 
@@ -33,20 +35,32 @@ CLIENT_SENT_FILE_MESSAGE = "/file"
 #then recieves messages and updates the chat text in ui
 def client_connection(connection, address, window):
     global connected
+    global recv_file_mode
+    global downloading
     print(f"{address} connection established")
 
     while connected:
-        message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
-        if message_size:
-            message_size = int(message_size)
-            message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
-            if message == CLIENT_DISCONNECT_MESSAGE:
-                print("Client disconnnected.")
-                connected = False
- 
-            #print(f"[{address}] {message}")
-            chat = window['chat']
-            chat.update(chat.get()+'\n client#2: ' + message)
+        if recv_file_mode and not downloading:
+            #recieving file
+            print("reciving a file...")
+            recieve_a_file(connection)
+            recv_file_mode = False
+        else:
+            message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+            if message_size:
+                message_size = int(message_size)
+                message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+                if message == CLIENT_DISCONNECT_MESSAGE:
+                    print("Client disconnnected.")
+                    connected = False
+                elif message == CLIENT_SENT_FILE_MESSAGE:
+                    print("preparing to recieve a file from client...")
+                    recv_file_mode = True
+                else:
+                    #normal message
+                    chat = window['chat']
+                    chat.update(chat.get()+'\n client#2: ' + message)
+
         
     connection.close()
 
@@ -97,6 +111,8 @@ def send_file(client, file):
                 # file transmitting is done
                 print("file send done!")
                 f.close()
+                downloading = False
+                recv_file_mode = False
                 break
             client.send(bytes_read)
             # we use sendall to assure transimission in 
@@ -108,9 +124,61 @@ def send_file(client, file):
    # client.close()
     # --- end ---
 
+
+
+def recieve_a_file(connection):
+    global downloading
+    downloading = True
+    #first get info about the file (filename and size)
+    # --- get file info size ---
+    message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    message_size = int(message_size)
+    # --- get file info ---
+    message_info = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    filename, filesize = message_info.split(SEPARATOR)
+    # remove absolute path if there is
+    filename = os.path.basename(filename)
+    # convert to integer
+    filesize = int(filesize)
+    print("Got file info:")
+    print(filename)
+    print(filesize)
+    # --- then get the whole file --- 
+    # start receiving the file from the socket
+    # and writing to the file stream
+    progress = tqdm.tqdm(range(filesize), f"Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+    number_of_packages = math.floor(filesize / BUFFER_SIZE)
+    #print("number of packages(4096): " + number_of_packages)
+    last_package_size = filesize-(number_of_packages*BUFFER_SIZE)
+   # print("last package size: " +  last_package_size)
+    i = 1
+    with open(filename, "wb") as f:
+        while True:
+            # read 1024 bytes from the socket (receive)
+            if(i <= number_of_packages and i != 0):
+                bytes_read = connection.recv(BUFFER_SIZE)
+            else:
+                bytes_read = connection.recv(last_package_size)
+                f.write(bytes_read)
+                progress.update(len(bytes_read))
+                # nothing is received
+                # file transmitting is done
+                print("downloaded the whole file! done!")
+                downloading = False
+                recv_file_mode = False
+                f.close()
+                break
+            i+=1
+            # write to the file the bytes we just received
+            f.write(bytes_read)
+            #print("dowloaded part of file! continue...")
+            # update the progress bar
+            progress.update(len(bytes_read))
+   # connection.close()
+
 #--- front ---
 import PySimpleGUI as sg
-sg.theme('DarkAmber')
+sg.theme('DarkBlue13')
 
 layout = [[sg.Text('Chat:')],
     [sg.Text('', key="chat")],
@@ -205,8 +273,9 @@ def base_client_start():
             send_file(connection, values['FileBrowse'])
 
         #print('You entered ',values[0])
-        chat.update(chat.get()+'\n client#1: ' + values[0])
-        send(connection, values[0])
+        if(values[0]):
+            chat.update(chat.get()+'\n client#1: ' + values[0])
+            send(connection, values[0])
     client.close()
     connected = False
     print("Connection closed.")
