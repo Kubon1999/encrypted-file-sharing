@@ -41,7 +41,7 @@ def recieve_message(connection, address, window):
                 message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
             if message == CLIENT_DISCONNECT_MESSAGE:
                 connected = False
-            if message == NEXT_MESSAGE_IS_FILE:
+            if message == CLIENT_SENT_FILE_MESSAGE:
                 recv_file_mode = True
 
             chat = window['chat']
