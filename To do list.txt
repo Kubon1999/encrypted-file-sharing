@@ -1,0 +1,46 @@
+Lista rzeczy do zrobienia:
+
+Interfejs graficzny:
+1. wpisywanie i odbieranie wiadomosci od uzytkownika
+2. wysylanie plikow o typowych rozszerzeniach (.txt, .png, .pdf, .avi, etc)
+3. pliki o dowolnej wielkosci (nawet 500MB i wiecej)
+4. wybor metody szyfrowania blokowego (ECB i CBC)
+5. belka progresu przesylania pliku (duzych plikow)
+
+Algorytmy szyfrujace:
+1. AES block cipher
+2. do wyboru dwie wersje szyfrowania ECB i CBC
+3. przed wysylaniem duzych plikow, metoda dzielenia danych musi byc zaimplementowana 
+	(tu chyba chodzi bardziej o powiadomienie drugiej osoby w jaki sposob dane zostana podzielone zeby wiedzial jak je rozszyfrowac)
+	przed wyslaniem przez internet
+4. generator liczb pseudolosowych musi byc uzyty do tworzenia klucza sesyjnego
+5. klucz sesyjny musi byc zaszyfrowany kluczem publiczbyn (RSA) odbiorcy
+6. klucz prywatny i publiczny maja byc trzymane oddzielnie
+7. klucz prywatny ma byc zakodowany szyfrem blokowym w modzie CBC
+8. do odszyfrowania klucza prywatnego nalezy uzyc hashu hasla wprowadzanego przez uzytkownika
+9. mozna korzystac z gotowych implementacji algorytmow
+
+Inne: 
+1. Acknowledgment message ???
+2. w przypadku logowania ze zlym haslem, uzytkownik nie ma byc informowany o wpisaniu zlego hasla
+	a dane przychodzace maj¹ byæ losowe
+3. w raporcie nalezy uwzglednic testy wydajnosci (transfer roznych plikow, czas przesylu, odszyrowanie przy zlym hasle)
+
+Przesylanie danych:
+1. UDP / TCP uzyte do komunikacji
+2. jesli uzywane udp trzeba obsluzyc wyjatek utraty danych
+
+
+NOTY:
+1. podczas realizacji projektu OBOWIAZKOWO nalezy uzyc:
+ -session key (do kodowania danych)
+ -prywatny i publiczny klucz RSA dla bezpiecznego przesylu klucza sesyjnego
+ -klucza lokalnego do bezpiecznego przechowywania klucza prywatnego
+2. uzyty protokol komunikacyjny (udp lub tcp) musi umozliwiac transmisje zaszyfrowanego klucz sesyjnego (z uzyciem algorytmu RSA) 
+3. nalezy zwrocic uwage by parametry uzyte do algorytmow szyfrujacych (tj. typ algorytmu, rozmiar klucza, rozmiar bloku, mod szyfrowania, wektor inijcujacy)
+	musza byc wyslane w sposob bezpieczny (zaszyfrowane)
+
+====================================================
+Lista rzeczy zrobionych:
+
+//tu wpisac te punkty juz zrobione
