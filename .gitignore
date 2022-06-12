@@ -1,3 +1,5 @@
 *.zip
 .vs/*
 *.png
+.DS_Store
+Crypto
