@@ -1,11 +1,33 @@
+Kuba:
+- GUI progress bar (potem, jak Karol wyœle)
+- wysylanie klucza publicznego (zaraz po nawiazaniu polaczenia)
+
+
+///dziala tak:
+uzytkownicy sie lacza
+- wymiana kluczy publicznych (RSA)
+- ktos tworzy klucz sesyjny (zmienna)
+- wysyla klucz sesyjny zaszyfrowany kluczem publicznym drugiego zioma
+- wszelkie dane sa kodowane kluczem sesyjnym
+- ecb i cbc (radio button?) czy powiadamiac drugiego zioma jakie szyfrowanie?
+- na przyklad jesli wysylasz wiadomosc to wysylasz przed jakim sposobem szyfrujesz, wielkosc?, inne
+///
+
+
+
+Tomek:
+- szyfrowanie kluczem publicznym AES
+- odszyfrowanie kluczem prywatnym
+
+
+
+
+
 Lista rzeczy do zrobienia:
 
 Interfejs graficzny:
-1. wpisywanie i odbieranie wiadomosci od uzytkownika
-2. wysylanie plikow o typowych rozszerzeniach (.txt, .png, .pdf, .avi, etc)
-3. pliki o dowolnej wielkosci (nawet 500MB i wiecej)
-4. wybor metody szyfrowania blokowego (ECB i CBC)
-5. belka progresu przesylania pliku (duzych plikow)
+1. wybor metody szyfrowania blokowego (ECB i CBC)
+2. belka progresu przesylania pliku (duzych plikow)
 
 Algorytmy szyfrujace:
 1. AES block cipher
@@ -15,10 +37,6 @@ Algorytmy szyfrujace:
 	przed wyslaniem przez internet
 4. generator liczb pseudolosowych musi byc uzyty do tworzenia klucza sesyjnego
 5. klucz sesyjny musi byc zaszyfrowany kluczem publiczbyn (RSA) odbiorcy
-6. klucz prywatny i publiczny maja byc trzymane oddzielnie
-7. klucz prywatny ma byc zakodowany szyfrem blokowym w modzie CBC
-8. do odszyfrowania klucza prywatnego nalezy uzyc hashu hasla wprowadzanego przez uzytkownika
-9. mozna korzystac z gotowych implementacji algorytmow
 
 Inne: 
 1. Acknowledgment message ???
@@ -27,8 +45,7 @@ Inne:
 3. w raporcie nalezy uwzglednic testy wydajnosci (transfer roznych plikow, czas przesylu, odszyrowanie przy zlym hasle)
 
 Przesylanie danych:
-1. UDP / TCP uzyte do komunikacji
-2. jesli uzywane udp trzeba obsluzyc wyjatek utraty danych
+
 
 
 NOTY:
@@ -44,3 +61,19 @@ NOTY:
 Lista rzeczy zrobionych:
 
 //tu wpisac te punkty juz zrobione
+Interfejs graficzny:
+1. wpisywanie i odbieranie wiadomosci od uzytkownika
+2. wysylanie plikow o typowych rozszerzeniach (.txt, .png, .pdf, .avi, etc)
+3. pliki o dowolnej wielkosci (nawet 500MB i wiecej)
+
+Algorytmy szyfrujace:
+1. klucz prywatny i publiczny maja byc trzymane oddzielnie
+2. klucz prywatny ma byc zakodowany szyfrem blokowym w modzie CBC
+3. do odszyfrowania klucza prywatnego nalezy uzyc hashu hasla wprowadzanego przez uzytkownika
+4. mozna korzystac z gotowych implementacji algorytmow
+
+Inne:
+
+Przesylanie danych:
+1. UDP / TCP uzyte do komunikacji
+2. jesli uzywane udp trzeba obsluzyc wyjatek utraty danych
