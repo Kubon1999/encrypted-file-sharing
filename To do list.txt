@@ -3,6 +3,7 @@ Kuba:
 - wysylanie klucza publicznego (zaraz po nawiazaniu polaczenia)
 
 
+
 ///dziala tak:
 uzytkownicy sie lacza
 - wymiana kluczy publicznych (RSA)
