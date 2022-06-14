@@ -1,6 +1,7 @@
 Kuba:
-- GUI progress bar (potem, jak Karol wyœle)
+- GUI progress bar (potem, jak Karol wyï¿½le)
 - wysylanie klucza publicznego (zaraz po nawiazaniu polaczenia)
+
 
 
 ///dziala tak:
@@ -41,7 +42,7 @@ Algorytmy szyfrujace:
 Inne: 
 1. Acknowledgment message ???
 2. w przypadku logowania ze zlym haslem, uzytkownik nie ma byc informowany o wpisaniu zlego hasla
-	a dane przychodzace maj¹ byæ losowe
+	a dane przychodzace majï¿½ byï¿½ losowe
 3. w raporcie nalezy uwzglednic testy wydajnosci (transfer roznych plikow, czas przesylu, odszyrowanie przy zlym hasle)
 
 Przesylanie danych:

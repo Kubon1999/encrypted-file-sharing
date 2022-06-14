@@ -1,9 +1,11 @@
 #--- back ----
 
+from calendar import c
 import threading
 import socket
 import os
 from turtle import down
+from requests import session
 import tqdm
 import math
 import rsa
@@ -20,6 +22,7 @@ path_private = "private"
 recv_file_mode = False
 downloading = False
 DEV_ENV = False
+mode = 'cbc' # cbc or ecb
 
 key_len = 2048 #RSA key length
 path_private = "private_client"
@@ -29,12 +32,26 @@ file_public = "public.pem"
 private_path_to_file = os.path.join(path_private, file_private)
 public_path_to_file = os.path.join(path_public, file_public)
 
+
 #FILE UPLOAD RELATED
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 4096 # send 4096 bytes each time step
 CLIENT_SENT_FILE_MESSAGE = "/file"
 
 #-----
+
+#PUBLIC KEY RELATED
+CLIENT_SEND_PUBLIC_KEY = "/key"
+recv_public_key_mode = False
+public_key_base_client = ""
+pass_hash = ""
+#----
+
+#SESSION
+CLIENT_SEND_SESSION = "/session"
+recv_public_session = False
+session_key = ""
+#----
 
 def send(client,message):
     message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
@@ -46,6 +63,13 @@ def send(client,message):
     #print(f"Sending: {message}")
     client.send(message)
     #print(f"Send!")
+
+def send_key(client):
+    send(client, "/key")
+    print("sending a public key...")
+    readRSAKey = keys.readRSAKey(pass_hash, public_path_to_file)
+    send(client, readRSAKey.decode(FORMAT_OF_MESSAGE_IN_SOCKET))
+
 
 def send_file(client, file):
     # get the file size
@@ -96,8 +120,11 @@ def send_file(client, file):
 
 def recieve_message(connection, address, window):
     global recv_file_mode
+    global recv_public_key_mode
+    global recv_public_session
     global downloading
     print(f"{address} connection established")
+    send_key(connection)
     connected = True
 
     while connected:
@@ -106,24 +133,94 @@ def recieve_message(connection, address, window):
             print("reciving a file...")
             recieve_a_file(connection)
             recv_file_mode = False
+        elif recv_public_key_mode:
+            print("recieving a public key")
+            recieve_public_key(connection)
+            recv_public_key_mode = False
+        elif recv_public_session:
+            print("recieving a session key")
+            recieve_session_key(connection)
+            recv_public_session = False
         else:
             #recieving a text message
             message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)        
+            if session_key:
+                #decode
+                pk = keys.readRSAKey(pass_hash, private_path_to_file)
+                pk = rsa.PrivateKey.load_pkcs1(pk)
+                print(len(message_size))
+                #print(len(pk))
+                print(type(message_size))
+                print(type(pk))
+                string = '=' * (-len(message_size) % 4)
+                if string:
+                    message_size = message_size + string.encode()
+                print(len(message_size))
+                #print(len(pk))
+                print(type(message_size))
+                print(type(pk))
+                message_size = keys.decryptWithPrivateKey(pk, message_size)
+                print("wiadomosc size")
+                print(message_size)
             if message_size:
                 message_size = int(message_size)
                 message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+                if session_key:
+                    #decode
+                    pk = keys.readRSAKey(pass_hash, private_path_to_file)
+                    pk = rsa.PrivateKey.load_pkcs1(pk)
+                    print(len(message))
+                    #print(len(pk))
+                    print(type(message))
+                    print(type(pk))
+                    string = '=' * (-len(message) % 4)
+                    if string:
+                        message = message + string.encode()
+                    print(len(message))
+                    #print(len(pk))
+                    print(type(message))
+                    print(type(pk))
+                    message = keys.decryptWithPrivateKey(pk, message)
+                    print("wiadomosc")
+                    print(message)
                 if message == CLIENT_DISCONNECT_MESSAGE:
                     connected = False
                     print("disconnected")
                 elif message == CLIENT_SENT_FILE_MESSAGE:
                     print("preparing to recieve a file from client...")
                     recv_file_mode = True
+                elif message == CLIENT_SEND_PUBLIC_KEY:
+                    print("preparing to recieve a public key from client...")
+                    recv_public_key_mode = True
+                elif message == CLIENT_SEND_SESSION:
+                    print("preparing to recieve a session key from client...")
+                    recv_public_session = True                
                 else:
                     #normal message
                     chat = window['chat']
                     chat.update(chat.get()+'\n client#1: ' + message)
     connection.close()
 
+def recieve_session_key(connection):
+    global session_key
+    message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)       
+    message_size = int(message_size)
+    session_key_from_message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+
+    private_key = keys.readRSAKey(pass_hash, private_path_to_file)
+    private_key = rsa.PrivateKey.load_pkcs1(private_key)
+    session_key = keys.decryptWithPrivateKey(private_key, session_key_from_message)
+    print(session_key)
+    return
+
+def recieve_public_key(connection):
+    global public_key_base_client
+    message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)       
+    message_size = int(message_size)
+    message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    public_key_base_client = message
+    print(public_key_base_client)
+    return 
 
 def recieve_a_file(connection):
     global downloading
@@ -186,7 +283,10 @@ layout = [[sg.Text('Chat:')],
           [sg.Button('Ok')],
           [sg.Text('Send file:')],
           [sg.Text('File:', size=(8, 1)), sg.Input( key="file"), sg.FileBrowse('FileBrowse')],
-          [sg.Button('Send file'), sg.Cancel()]]
+          [sg.Button('Send file'), sg.Cancel()],
+          [sg.Radio('ECB', "RADIO1", default=False, key="-ECB-")],
+          [sg.Radio('CBC', "RADIO1", default=True, key="-CBC-")],
+            [sg.Button('Change mode'), sg.Cancel()]]
 
 layout_first_time_pass = [[sg.Text('Enter passsword:'), sg.InputText()],
 [sg.Text('Enter again:'), sg.InputText()],
@@ -202,6 +302,8 @@ window = sg.Window('Client #2', layout)
 
 def client_start():
     global window
+    global pass_hash
+    global mode
     if DEV_ENV == False:
         if not(os.path.exists(private_path_to_file)) or not(os.path.exists(public_path_to_file )):
             print("first time opening the app - lets create a password")
@@ -277,6 +379,13 @@ def client_start():
         if(values[0]):
             chat.update(chat.get()+'\n client#2: ' + values[0])
             send(client, values[0])
+        if event == 'Change mode':
+            if values['-CBC-'] == True:
+                mode = 'cbc'
+                print("changed mode to CBC.")
+            else:             
+                mode = 'ebc'
+                print("changed mode to EBC.")
 
 client_start()
 os._exit(0)
