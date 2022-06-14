@@ -38,7 +38,7 @@ def decryptRSA(hashed_Pass,data, mode):
 
 def writeRSAKey(hashed_Pass, path, key):
     f = open(path, 'wb')
-    f.write(encryptRSA(hashed_Pass, key.save_pkcs1('PEM')))
+    f.write(encryptRSA(hashed_Pass, key.save_pkcs1('PEM'), AES.MODE_CBC))
     f.close()
 
 def readRSAKey(hashed_Pass, path, mode):

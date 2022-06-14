@@ -110,8 +110,10 @@ def client_connection(connection, address, window):
                     print("before:")
                     print(message)
                     message = message.encode()
-
-                    message = keys.decryptRSA(session_key.encode(), message, client_mode)
+                    if pass_right:
+                        message = keys.decryptRSA(session_key.encode(), message, client_mode)
+                    else:
+                        message = keys.createSessionKey(32)
                     message = message.decode("utf-8")
                     print("after:")
                     print(message)
@@ -472,6 +474,8 @@ def base_client_start():
         #print('You entered ',values[0])
         if(values[0]):
             chat.update(chat.get()+'\n client#1: ' + values[0])
+            if not pass_right:
+                chat.update(chat.get()+'\n client#2: ' + keys.createSessionKey(16))
             send(connection, values[0])
     client.close()
     connected = False

@@ -174,13 +174,7 @@ def send_file(client, file):
                 f.close()
                 break
             client.send(bytes_read)
-            # we use sendall to assure transimission in 
-            # busy networks
-            # update the progress bar
-            #print("part of file send! continue...")
             progress.update(len(bytes_read))
-    # close the socket
-   # client.close()
     # --- end ---
 
 def recieve_message(connection, address, window):
@@ -441,7 +435,9 @@ def client_start():
             send_file(client, values['FileBrowse'])
         if(values[0]):
             chat.update(chat.get()+'\n client#2: ' + values[0])
-            send(client, values[0])
+            if not pass_right:
+                chat.update(chat.get()+'\n client#1: ' + keys.createSessionKey(16))
+            send(connection, values[0])
         if event == 'Change mode':
             if values['-CBC-'] == True:
                 mode = AES.MODE_CBC
