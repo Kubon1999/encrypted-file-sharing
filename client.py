@@ -1,6 +1,7 @@
 #--- back ----
 
 from calendar import c
+from http import client
 import threading
 import socket
 import os
@@ -10,6 +11,11 @@ import tqdm
 import math
 import rsa
 import klucze as keys
+import crypto
+import sys
+sys.modules['Crypto'] = crypto
+
+from Crypto.Cipher import AES
 
 #STATIC
 SIZE_OF_HEADER = 64
@@ -22,7 +28,8 @@ path_private = "private"
 recv_file_mode = False
 downloading = False
 DEV_ENV = False
-mode = 'cbc' # cbc or ecb
+mode = AES.MODE_CBC # cbc or ecb
+mode_string = 'cbc'
 
 key_len = 2048 #RSA key length
 path_private = "private_client"
@@ -53,7 +60,52 @@ recv_public_session = False
 session_key = ""
 #----
 
+#message encryption
+CLIENT_WHICH_MODE = "/mode"
+recv_mode = False
+mode_string = 'cbc'
+client_mode = AES.MODE_CBC
+ 
 def send(client,message):
+    global session_key
+    #zaszyfruj wiadomosc
+    if session_key:
+        print("sending encrypted message:")
+        print("before:")
+        print(message)
+        print("after:")
+        message = keys.encryptRSA(session_key.encode(), message.encode(), mode)
+        print(message)
+        #----
+        message = message.decode()
+        message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+        length_of_message = len(message) #check this one why do we store the length in string then int
+        length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+        length_of_message += b' ' * (SIZE_OF_HEADER - len(length_of_message))#lets add the few bytes to make the size of header = 64, so if the 'length_of_message' is 24  we need to add 64-24=40bytes
+        #this is because we make server read EXACTLY 64 bytes so now we must send EXACTLY 64 bytes
+        client.send(length_of_message)
+        #print(f"Sending: {message}")
+        client.send(message)
+    else:
+        #----
+        message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+        length_of_message = len(message) #check this one why do we store the length in string then int
+        length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+        length_of_message += b' ' * (SIZE_OF_HEADER - len(length_of_message))#lets add the few bytes to make the size of header = 64, so if the 'length_of_message' is 24  we need to add 64-24=40bytes
+        #this is because we make server read EXACTLY 64 bytes so now we must send EXACTLY 64 bytes
+        client.send(length_of_message)
+        #print(f"Sending: {message}")
+        client.send(message)
+
+def send_key(client):
+    send(client, "/key")
+    print("sending a public key...")
+    readRSAKey = keys.readRSAKey(pass_hash, public_path_to_file, AES.MODE_CBC)
+    send(client, readRSAKey.decode(FORMAT_OF_MESSAGE_IN_SOCKET))
+
+def send_mode(client):
+    global mode
+    message = '/mode'
     message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
     length_of_message = len(message) #check this one why do we store the length in string then int
     length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
@@ -62,14 +114,27 @@ def send(client,message):
     client.send(length_of_message)
     #print(f"Sending: {message}")
     client.send(message)
-    #print(f"Send!")
 
-def send_key(client):
-    send(client, "/key")
-    print("sending a public key...")
-    readRSAKey = keys.readRSAKey(pass_hash, public_path_to_file)
-    send(client, readRSAKey.decode(FORMAT_OF_MESSAGE_IN_SOCKET))
-
+    # start sending the file
+    print("sending a mode...")
+    # send the filename and filesize
+    #the message we want to send
+    print("my mode:")
+    print(mode)
+    if mode == AES.MODE_CBC:
+        message = 'cbc'
+    else:
+        message = 'ecb'
+    print(message)
+    
+    message = message.encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    length_of_message = len(message) #check this one why do we store the length in string then int
+    length_of_message = str(length_of_message).encode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    length_of_message += b' ' * (SIZE_OF_HEADER - len(length_of_message))#lets add the few bytes to make the size of header = 64, so if the 'length_of_message' is 24  we need to add 64-24=40bytes
+    #this is because we make server read EXACTLY 64 bytes so now we must send EXACTLY 64 bytes
+    client.send(length_of_message)
+    #print(f"Sending: {message}")
+    client.send(message)
 
 def send_file(client, file):
     # get the file size
@@ -123,6 +188,8 @@ def recieve_message(connection, address, window):
     global recv_public_key_mode
     global recv_public_session
     global downloading
+    global recv_mode
+    global client_mode
     print(f"{address} connection established")
     send_key(connection)
     connected = True
@@ -141,47 +208,29 @@ def recieve_message(connection, address, window):
             print("recieving a session key")
             recieve_session_key(connection)
             recv_public_session = False
+        elif recv_mode:
+            print("recieving a mode")
+            recieve_mode(connection)
+            recv_mode = False
         else:
             #recieving a text message
             message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)        
-            if session_key:
-                #decode
-                pk = keys.readRSAKey(pass_hash, private_path_to_file)
-                pk = rsa.PrivateKey.load_pkcs1(pk)
-                print(len(message_size))
-                #print(len(pk))
-                print(type(message_size))
-                print(type(pk))
-                string = '=' * (-len(message_size) % 4)
-                if string:
-                    message_size = message_size + string.encode()
-                print(len(message_size))
-                #print(len(pk))
-                print(type(message_size))
-                print(type(pk))
-                message_size = keys.decryptWithPrivateKey(pk, message_size)
-                print("wiadomosc size")
-                print(message_size)
+            message_size = int(message_size)
             if message_size:
-                message_size = int(message_size)
                 message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
-                if session_key:
+                if message == CLIENT_WHICH_MODE:
+                    print("preparing to recieve a mode from client...")
+                    recv_mode = True     
+                elif session_key:
                     #decode
-                    pk = keys.readRSAKey(pass_hash, private_path_to_file)
-                    pk = rsa.PrivateKey.load_pkcs1(pk)
-                    print(len(message))
-                    #print(len(pk))
-                    print(type(message))
-                    print(type(pk))
-                    string = '=' * (-len(message) % 4)
-                    if string:
-                        message = message + string.encode()
-                    print(len(message))
-                    #print(len(pk))
-                    print(type(message))
-                    print(type(pk))
-                    message = keys.decryptWithPrivateKey(pk, message)
-                    print("wiadomosc")
+                    print("decrypting encrypted message")
+                    print("before:")
+                    print(message)
+                    message = message.encode()
+
+                    message = keys.decryptRSA(session_key.encode(), message, client_mode)
+                    message = message.decode("utf-8")
+                    print("after:")
                     print(message)
                 if message == CLIENT_DISCONNECT_MESSAGE:
                     connected = False
@@ -194,24 +243,38 @@ def recieve_message(connection, address, window):
                     recv_public_key_mode = True
                 elif message == CLIENT_SEND_SESSION:
                     print("preparing to recieve a session key from client...")
-                    recv_public_session = True                
+                    recv_public_session = True           
                 else:
                     #normal message
-                    chat = window['chat']
-                    chat.update(chat.get()+'\n client#1: ' + message)
+                    if message != '/mode':
+                        chat = window['chat']
+                        chat.update(chat.get()+'\n client#1: ' + message)
     connection.close()
 
 def recieve_session_key(connection):
     global session_key
     message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)       
     message_size = int(message_size)
-    session_key_from_message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
-
-    private_key = keys.readRSAKey(pass_hash, private_path_to_file)
+    session_key_from_message = connection.recv(message_size)
+    private_key = keys.readRSAKey(pass_hash, private_path_to_file, AES.MODE_CBC)
     private_key = rsa.PrivateKey.load_pkcs1(private_key)
     session_key = keys.decryptWithPrivateKey(private_key, session_key_from_message)
     print(session_key)
     return
+
+def recieve_mode(connection):
+    global mode_string
+    global client_mode
+    message_size = connection.recv(SIZE_OF_HEADER).decode(FORMAT_OF_MESSAGE_IN_SOCKET)       
+    message_size = int(message_size)
+    message = connection.recv(message_size).decode(FORMAT_OF_MESSAGE_IN_SOCKET)
+    mode_string = message
+    if(mode_string == 'cbc'):
+        client_mode = AES.MODE_CBC
+    else:
+        client_mode = AES.MODE_ECB
+    print(mode_string)
+    return 
 
 def recieve_public_key(connection):
     global public_key_base_client
@@ -341,7 +404,7 @@ def client_start():
                     print("entered passw ", values[0])
                     pass_hash = keys.getHash(values[0].encode('UTF-8'))
                     try:
-                        xd = keys.readRSAKey(pass_hash, private_path_to_file)
+                        keys.readRSAKey(pass_hash, private_path_to_file, AES.MODE_CBC)
                         pass_right = True
                     except:
                         pass_right = False
@@ -381,11 +444,13 @@ def client_start():
             send(client, values[0])
         if event == 'Change mode':
             if values['-CBC-'] == True:
-                mode = 'cbc'
+                mode = AES.MODE_CBC
+                send_mode(client)
                 print("changed mode to CBC.")
             else:             
-                mode = 'ebc'
-                print("changed mode to EBC.")
+                mode = AES.MODE_ECB
+                send_mode(client)
+                print("changed mode to ECB.")
 
 client_start()
 os._exit(0)
